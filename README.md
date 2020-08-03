@@ -1,2 +1,5 @@
-# gift-sharing
-Basic secret santa website, allows people to know who they are sending their gifts to.
+#BANKSME
+
+Activate Virtual Environment: source venv/Scripts/activate
+
+Update installed packages to requirements.txt: pip freeze > requirements.txt
