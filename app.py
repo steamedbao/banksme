@@ -62,10 +62,12 @@ def check_inventory_turnover(Inventory_Turnover_Rate, Industry_Average):
     Returns inventory_turnover, mean, res
     '''
     inventory_turnover = Inventory_Turnover_Rate.iloc[-1,-1]
+    inventory_turnover_res = "The company's inventory turnover rate is " + str(inventory_turnover)
     print("The company's inventory turnover rate is {}".format(inventory_turnover))
         
     mean = Industry_Average['Inventory Turnover Rate'].iloc[-1]
-    print("The industry's average inventory turnover rate is {}".format(mean))
+    mean_res = "The industry's average inventory turnover rate is " + str(mean)
+    print("The company's average inventory turnover rate is {}".format(mean))
     
     res = ""
     if (abs(inventory_turnover - mean)/mean)*100 > 30:
@@ -78,7 +80,7 @@ def check_inventory_turnover(Inventory_Turnover_Rate, Industry_Average):
         res = "The deviation in inventory turnover rate is less than 30%."
         print(res)
     
-    return inventory_turnover, mean, res
+    return inventory_turnover_res, mean_res, res
 
 
 #check EBITDA
@@ -89,9 +91,11 @@ def check_EBITDA(income_statement, Industry_Average):
     '''
     Latest_EBITDA = extract_data(income_statement, 'EBITDA', -1, -1)
     print("The company's latest EBITDA is {}".format(Latest_EBITDA))
+    Latest_EBITDA_res = "The company's latest EBITDA is " + str(Latest_EBITDA)
         
     mean = Industry_Average['EBITDA'].iloc[-1]
     print("The industry's mean EBITDA is {}".format(mean))
+    mean_res = "The industry's mean EBITDA is " + str(mean)
     
     res = ""
     if (abs(Latest_EBITDA - mean)/mean)*100 > 20:
@@ -102,7 +106,7 @@ def check_EBITDA(income_statement, Industry_Average):
         res = "The deviation in EBITDA is less than 20%."
         print(res)
 
-    return Latest_EBITDA, mean, res
+    return Latest_EBITDA_res, mean_res, res
 
 
 #extract Debt Service Coverage Ratio
@@ -141,15 +145,15 @@ def check_DSCR(balance_sheet, income_statement):
 
         DSCR = Latest_Operating_Income/(Latest_Current_Liabilities + New_Curr_Port_LTDebt)
         
-        res = ""
+        res = "With a new debt value of 123, "
         if DSCR < 1:
-            res = "DSCR < 1. System rejects the new debt."
+            res += "DSCR < 1. System rejects the new debt."
             print(res)
         elif DSCR < 1.2:
-            res = "1 <= DSCR < 1.2. Further consideration required."
+            res += "1 <= DSCR < 1.2. Further consideration required."
             print(res)
         else:
-            res = "DSCR >= 1.2. System approves the new debt."
+            res += "DSCR >= 1.2. System approves the new debt."
             print(res)
             
         #choice = input("Do you want to enter another new debt value? (Y/N):")
@@ -158,7 +162,7 @@ def check_DSCR(balance_sheet, income_statement):
         #    loop = False
         break
 
-        return res
+    return res
 
 
 #extract Debt to EBITDA
@@ -388,8 +392,9 @@ def get_bad_debt_score(MCD_BS, Industry_Average, Scores):
     latest_bad_debt = bad_debt.iloc[-1,-1]
     latest_industry_average = Industry_Average['Bad Debt'].iloc[-1]
     score = calculate_score(Scores, 'Bad Debt', latest_bad_debt, latest_industry_average)
+    bd_score = "The company's bad debt score is " + str(score)
 
-    return score
+    return bd_score
 
 
 def get_inventory_turnover_rate_score(MCD_BS, MCD_IS, Industry_Average, Scores):
@@ -404,9 +409,9 @@ def get_inventory_turnover_rate_score(MCD_BS, MCD_IS, Industry_Average, Scores):
     latest_inventory_turnover = inventory_turnover.iloc[-1,-1]
     latest_industry_average = Industry_Average['Inventory Turnover Rate'].iloc[-1]
     score = calculate_score(Scores, 'Inventory Turnover Rate', latest_inventory_turnover, latest_industry_average)
-    print(score)
+    it_score = "The company's inventory turnover score is " + str(score)
 
-    return score, inv_turnover, mean, res
+    return it_score, inv_turnover, mean, res
 
 
 def get_ebidta_score(MCD_IS, Industry_Average, Scores):
@@ -419,12 +424,12 @@ def get_ebidta_score(MCD_IS, Industry_Average, Scores):
     latest_EBITDA = EBITDA.iloc[-1,-1]
     latest_industry_average = Industry_Average['EBITDA'].iloc[-1]
     score = calculate_score(Scores, 'EBITDA', latest_EBITDA, latest_industry_average)
-    print(score)
+    eb_score = "The company's EBIDTA score is " + str(score)
 
-    return score, lat_ebitda, mean, res
+    return eb_score, lat_ebitda, mean, res
 
 
-def get_dcsr(MCD_BS, MCD_IS, Scores):
+def get_dscr(MCD_BS, MCD_IS, Scores):
     '''
     PLOT GRAPH FUNCTIONS ARE COMMENTED OUT
     USER INPUTS ARE ALSO COMMENTED OUT AND REPLACED WITH SOME VALUE
@@ -432,21 +437,23 @@ def get_dcsr(MCD_BS, MCD_IS, Scores):
     DSCR = extract_DSCR(MCD_BS, MCD_IS)
     latest_DSCR = DSCR.iloc[-1,-1]
     print("The company's DSCR is {}".format(latest_DSCR))
-
+    latest_DSCR_res = "The company's DSCR is " + str(latest_DSCR)
     res = check_DSCR(MCD_BS, MCD_IS)
 
     #lower_limit_DSCR = float(input("Please enter a lower limit DSCR:"))
     lower_limit_DSCR = 1.0
     score = calculate_score(Scores, 'DSCR', latest_DSCR, lower_limit_DSCR)
     print(score)
+    dscr_score = "With a lower limit DSCR of 1.0, the company's DSCR score is " + str(score)
 
-    return score, res
+    return dscr_score, latest_DSCR_res, res
 
 
 def get_debt_to_ebitda(MCD_BS, MCD_IS, Scores):
     Debt_to_EBITDA = extract_Debt_to_EBITDA(MCD_BS, MCD_IS)
     latest_Debt_to_EBITDA = Debt_to_EBITDA.iloc[-1,-1]
     print("The company's Debt to EBITDA ratio is {}".format(latest_Debt_to_EBITDA))
+    latest_Debt_to_EBITDA_res = "The company's Debt to EBITDA ratio is " + str(latest_Debt_to_EBITDA)
 
     #Debt_to_EBITDA_threshold = float(input("Please enter a threshold for Debt to EBITDA ratio:"))
     Debt_to_EBITDA_threshold = 1.8
@@ -455,20 +462,23 @@ def get_debt_to_ebitda(MCD_BS, MCD_IS, Scores):
 
     score = calculate_score(Scores, 'Debt to EBITDA', latest_Debt_to_EBITDA, Debt_to_EBITDA_threshold)
     print(score)
+    debt_to_ebitda_score = "With a Debt to EBITDA threshold of 1.8, the debt to EBITDA score is " + str(score)
 
-    return score, res
+    return debt_to_ebitda_score, latest_Debt_to_EBITDA_res, res
 
 
 def get_gearing_ratio(MCD_BS, Industry_Average, Scores):
     Gearing = extract_gearing(MCD_BS)
     latest_gearing = Gearing.iloc[-1,-1]
     print("The company's gearing is {}".format(latest_gearing))
+    latest_gearing_res = "The company's gearing is " + str(latest_gearing)
 
     latest_industry_average = Industry_Average['Gearing Ratio'].iloc[-1]
     score = calculate_score(Scores, 'Gearing', latest_gearing, latest_industry_average)
     print(score)
+    gear_score = "The company's gearing ratio is " + str(score)
 
-    return score, latest_gearing
+    return gear_score, latest_gearing_res
 
 
 def get_net_worth(MCD_BS, Industry_Average, Scores):
@@ -484,8 +494,9 @@ def get_net_worth(MCD_BS, Industry_Average, Scores):
     latest_industry_average = Industry_Average['Net Worth'].iloc[-1]
     score = calculate_score(Scores, 'Net Worth', latest_net_worth, latest_industry_average)
     print(score)
+    net_worth_score = "The company's net worth is " + str(score)
 
-    return score, res
+    return net_worth_score, res
 
 
 def get_overall_score(Scores):
@@ -501,7 +512,9 @@ def get_overall_score(Scores):
 
     print("MCDonald's overall bankability score is {}%".format(bankability))
 
-    return bankability
+    overall_score = "The company's bankability is: " + str(bankability)
+
+    return overall_score
 
 
 @app.route("/")
@@ -512,14 +525,66 @@ def index():
 @app.route("/data", methods=['GET', 'POST'])
 def data():
     if request.method == 'POST':
-        database = pd.ExcelFile(request.form['csvfile1'])
-        comp = pd.ExcelFile(request.form['csvfile2'])
+        csvfile1 = request.files['csvfile1']
+        csvfile2 = request.files['csvfile2']
+        file = csvfile2.filename
+        file_details = file[:-4] + "'s results:"
+        database = pd.ExcelFile(csvfile1)
+        comp = pd.ExcelFile(csvfile2)
+        #database = pd.ExcelFile(request.files['csvfile1'])
+        #comp = pd.ExcelFile(request.files['csvfile2'])
+        #print(comp)
         MCD_BS = pd.read_excel(comp,'Balance Sheet',index_col=0)
         MCD_IS = pd.read_excel(comp,'Income Statement',index_col=0)
         
         Scores = {}
+        
+        List_of_Companies = pd.read_excel(database,'List of Companies',index_col=0)
 
-        return render_template('data.html')
+        UEN, SSIC = extract_uen_and_ssic_from_BS(MCD_BS)
+
+        count, Industry_Average = retrieve_industry_averages(UEN, List_of_Companies, SSIC, MCD_BS, MCD_IS, database)
+
+        bad_debt_score = get_bad_debt_score(MCD_BS, Industry_Average, Scores)
+
+        inv_turnover_score, inv_turnover, inv_turnover_mean, inv_turnover_res = get_inventory_turnover_rate_score(MCD_BS, MCD_IS, Industry_Average, Scores)
+
+        ebidta_score, lat_ebitda, ebidta_mean, ebidta_res = get_ebidta_score(MCD_IS, Industry_Average, Scores)
+
+        dscr_score, latest_dscr, dscr_res = get_dscr(MCD_BS, MCD_IS, Scores)
+
+        debt_to_ebitda_score, latest_Debt_to_EBITDA_res, debt_to_ebitda_res = get_debt_to_ebitda(MCD_BS, MCD_IS, Scores)   
+
+        gearing_ratio_score, latest_gearing = get_gearing_ratio(MCD_BS, Industry_Average, Scores)     
+
+        net_worth_score, net_worth_res = get_net_worth(MCD_BS, Industry_Average, Scores)
+
+        bankability = get_overall_score(Scores)
+        
+        return render_template(
+            'data.html',
+            bad_debt_score=bad_debt_score,
+            inv_turnover_score=inv_turnover_score,
+            inv_turnover=inv_turnover,
+            inv_turnover_mean=inv_turnover_mean, 
+            inv_turnover_res=inv_turnover_res,
+            ebidta_score=ebidta_score, 
+            lat_ebitda=lat_ebitda, 
+            ebidta_mean=ebidta_mean, 
+            ebidta_res=ebidta_res,
+            dscr_score=dscr_score,
+            latest_dscr=latest_dscr,
+            dscr_res=dscr_res,
+            debt_to_ebitda_score=debt_to_ebitda_score, 
+            latest_Debt_to_EBITDA_res=latest_Debt_to_EBITDA_res,
+            debt_to_ebitda_res=debt_to_ebitda_res,
+            gearing_ratio_score=gearing_ratio_score, 
+            latest_gearing=latest_gearing,
+            net_worth_score=net_worth_score, 
+            net_worth_res=net_worth_res,
+            bankability=bankability,
+            file_details=file_details
+        )
 
 
 if __name__ == '__main__':
