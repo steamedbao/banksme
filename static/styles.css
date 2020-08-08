@@ -1,0 +1,27 @@
+.center-text {
+    text-align: center;
+}
+
+#fileToUpload {
+    text-align: center;
+}
+
+.shift-right {
+    margin-left: 20px;
+}
+
+.survey-form {
+    border: 1px solid rgba(0, 0, 0, .5); 
+    border-radius: 25px; 
+    width: 50%; 
+    margin: auto; 
+    padding: 20px;
+}
+
+.group-results {
+    border: 1px solid rgba(0, 0, 0, .5); 
+    border-radius: 25px; 
+    width: 80%; 
+    margin: auto; 
+    padding: 20px;
+}

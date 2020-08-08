@@ -1,4 +1,10 @@
-from flask import Flask, request, render_template, redirect
+from flask import Flask, request, render_template, redirect, jsonify, url_for, flash, send_from_directory, abort
+from flask_wtf import FlaskForm
+from flask_sqlalchemy import SQLAlchemy
+from flask_bcrypt import Bcrypt
+from wtforms import StringField, PasswordField, SubmitField, BooleanField
+from wtforms.validators import DataRequired, Length, EqualTo, ValidationError
+from flask_login import LoginManager, UserMixin, login_user, logout_user, current_user, login_required
 import csv
 import copy
 import random
@@ -6,10 +12,56 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import openpyxl
+import json
 from openpyxl.styles import Font
 from datetime import datetime
+import os
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'e1aa392e3414761c77a241b7627090ef'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgres@localhost/banksme'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+bcrypt = Bcrypt(app)
+login_manager = LoginManager(app)
+login_manager.login_view = 'login'
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+
+class RegistrationForm(FlaskForm):
+    username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
+    password = PasswordField('Password', validators=[DataRequired()])
+    confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
+    submit = SubmitField('Sign Up')
+
+    def validate_username(self, username):
+        if db.session.query(User).filter(User.username == username.data).count() > 0:
+            raise ValidationError('That username is taken. Please choose a different one.')
+
+
+class LoginForm(FlaskForm):
+    username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
+    password = PasswordField('Password', validators=[DataRequired()])
+    submit = SubmitField('Login')
+
+
+class User(db.Model, UserMixin):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(20), unique=True, nullable=False)
+    password = db.Column(db.String(60), nullable=False)
+    results = db.Column(db.JSON)
+
+    def __init__(self, username, password, results):
+        self.username = username
+        self.password = password
+        self.results = results
+
+    def __repr__(self):
+        return f"User('{self.username}, '{self.results}')"
 
 
 #extract relevant data from the financial statements
@@ -522,18 +574,66 @@ def index():
     return render_template('index.html')
 
 
+@app.route("/admin")
+@login_required
+def admin():
+    user = User.query.filter_by(username = "admin").first()
+    res = json.loads(user.results)
+    return render_template('admin.html', res=res)
+
+
+@app.route("/login", methods=['GET', 'POST'])
+def login():
+
+    if current_user.is_authenticated:
+        flash(f'You are already logged in, {current_user.username}!', 'success')
+        return redirect(url_for('index'))
+
+    form = LoginForm()
+    if form.validate_on_submit():
+        user = User.query.filter_by(username = form.username.data).first()
+        if user and bcrypt.check_password_hash(user.password, form.password.data):
+            login_user(user)
+            flash(f'You are logged in, {user.username}!', 'success')
+            return redirect(url_for('admin'))
+        else:
+            flash('Login Unsuccessful. Please check username and password', 'danger')
+    return render_template('login.html', form=form)
+
+
+@app.route("/register", methods=['GET', 'POST'])
+def register():
+    '''
+    UNCOMMENT THIS CODE TO CREATE ACCOUNT FOR ADMIN
+    USERNAME MUST BE "admin"
+    '''
+#    if current_user.is_authenticated:
+#        flash(f'You are already logged in, {current_user.username}!', 'success')
+#        return redirect(url_for('index'))
+
+#    form = RegistrationForm()
+#    if form.validate_on_submit():
+#        hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
+#        user = User(form.username.data, hashed_password, '')
+#        db.session.add(user)
+#        db.session.commit()
+#        flash(f'Account created for {form.username.data}!, you may now log in', 'success')
+#        return redirect(url_for('login'))
+#    return render_template('register.html', form=form)
+    pass
+
+
 @app.route("/data", methods=['GET', 'POST'])
 def data():
     if request.method == 'POST':
         csvfile1 = request.files['csvfile1']
         csvfile2 = request.files['csvfile2']
         file = csvfile2.filename
+        csvfile2.save(os.path.join("uploads", file))
         file_details = file[:-4] + "'s results:"
         database = pd.ExcelFile(csvfile1)
         comp = pd.ExcelFile(csvfile2)
-        #database = pd.ExcelFile(request.files['csvfile1'])
-        #comp = pd.ExcelFile(request.files['csvfile2'])
-        #print(comp)
+
         MCD_BS = pd.read_excel(comp,'Balance Sheet',index_col=0)
         MCD_IS = pd.read_excel(comp,'Income Statement',index_col=0)
         
@@ -546,20 +646,57 @@ def data():
         count, Industry_Average = retrieve_industry_averages(UEN, List_of_Companies, SSIC, MCD_BS, MCD_IS, database)
 
         bad_debt_score = get_bad_debt_score(MCD_BS, Industry_Average, Scores)
-
         inv_turnover_score, inv_turnover, inv_turnover_mean, inv_turnover_res = get_inventory_turnover_rate_score(MCD_BS, MCD_IS, Industry_Average, Scores)
-
         ebidta_score, lat_ebitda, ebidta_mean, ebidta_res = get_ebidta_score(MCD_IS, Industry_Average, Scores)
-
         dscr_score, latest_dscr, dscr_res = get_dscr(MCD_BS, MCD_IS, Scores)
-
         debt_to_ebitda_score, latest_Debt_to_EBITDA_res, debt_to_ebitda_res = get_debt_to_ebitda(MCD_BS, MCD_IS, Scores)   
-
         gearing_ratio_score, latest_gearing = get_gearing_ratio(MCD_BS, Industry_Average, Scores)     
-
         net_worth_score, net_worth_res = get_net_worth(MCD_BS, Industry_Average, Scores)
-
         bankability = get_overall_score(Scores)
+
+        bank_results = {
+            file: [
+                bad_debt_score,
+                inv_turnover_score, 
+                inv_turnover, 
+                inv_turnover_mean, 
+                inv_turnover_res,
+                ebidta_score, 
+                lat_ebitda, 
+                ebidta_mean, 
+                ebidta_res,
+                dscr_score, 
+                latest_dscr, 
+                dscr_res,
+                debt_to_ebitda_score, 
+                latest_Debt_to_EBITDA_res, 
+                debt_to_ebitda_res,
+                gearing_ratio_score, 
+                latest_gearing,
+                net_worth_score, 
+                net_worth_res,
+                bankability 
+            ]
+        }
+
+        user = User.query.filter_by(username = "admin").first()
+        
+        if user.results == "":
+            user.results = json.dumps(bank_results)
+            db.session.commit()
+        else:
+            res = json.loads(user.results)
+            flag = 1
+            for key in res.keys():
+                if key == file:
+                    res[key] = bank_results[file]
+                    flag = 0
+                    break
+            if flag == 1:
+                res.update(bank_results)
+            
+            user.results = json.dumps(res)
+            db.session.commit()
         
         return render_template(
             'data.html',
@@ -585,6 +722,20 @@ def data():
             bankability=bankability,
             file_details=file_details
         )
+
+
+@app.route("/download/<csv_id>")
+def download(csv_id):
+    try:
+        return send_from_directory("uploads", filename=csv_id, as_attachment=True)
+    except FileNotFoundError:
+        abort(404)
+
+
+@app.route("/logout")
+def logout():
+    logout_user()
+    return redirect(url_for('index'))
 
 
 if __name__ == '__main__':
